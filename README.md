@@ -1,58 +1,172 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Hueco
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+App web SaaS multi-tenant para gestión de reservas de espacios (coworks, salas de reuniones, salas de música, despachos por horas, etc.). Cada empresa cliente crea su cuenta y opera con un panel admin + portal de usuarios.
 
-## About Laravel
+## Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Backend**: Laravel 13 + Eloquent ORM
+- **Frontend**: Inertia.js + Vue 3 + Tailwind CSS 3 (vía Laravel Breeze)
+- **Base de datos**: MySQL 8 / MariaDB
+- **Auth**: Breeze (login, registro, password reset, profile, dark mode)
+- **Email transaccional**: Resend (en Fase 4)
+- **Multi-tenancy**: pendiente de instalar (`stancl/tenancy` o `spatie/laravel-multitenancy`) en Fase 2
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Equipo
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Gerardo** — Backend (Laravel, BD, infraestructura)
+- **Alex** — Frontend (Vue, UI/UX, Inertia)
+- **Juanjo** — Deploy a producción (recibe el entregable empaquetado y lo sube al cPanel del cliente)
 
-## Learning Laravel
+## Requisitos en tu máquina
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Herramienta | Versión mínima | Cómo instalar |
+|---|---|---|
+| **PHP** | 8.2+ (ideal 8.3) | Vía MAMP, Laragon, Herd o instalación directa |
+| **Composer** | 2.x | https://getcomposer.org |
+| **Node.js** | 20+ (LTS) | https://nodejs.org |
+| **MySQL** | 8.x (o MariaDB ≥10.3) | Incluido en MAMP |
+| **Git** | 2.x | https://git-scm.com |
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Extensiones PHP requeridas
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+Asegúrate de que tu `php.ini` tenga habilitadas:
 
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```
+extension=curl
+extension=fileinfo
+extension=gd
+extension=intl
+extension=mbstring
+extension=exif
+extension=pdo_mysql
+extension=sodium
+extension=openssl
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Setup local (paso a paso)
 
-## Contributing
+### 1. Clonar el repo
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+git clone https://github.com/gerardogonzalezdm/hueco.git
+cd hueco
+```
 
-## Code of Conduct
+### 2. Instalar dependencias
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+composer install
+npm install
+```
 
-## Security Vulnerabilities
+### 3. Configurar el `.env`
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-## License
+Edita `.env` y ajusta la BD a tu MAMP/MySQL local:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```env
+APP_NAME=Hueco
+APP_LOCALE=es
+APP_FAKER_LOCALE=es_ES
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306         # en MAMP Windows. En MAMP Mac normalmente 8889
+DB_DATABASE=hueco
+DB_USERNAME=root
+DB_PASSWORD=root     # ajusta según tu MAMP
+```
+
+### 4. Crear la base de datos
+
+Arranca MAMP y crea la BD `hueco`:
+
+```sql
+CREATE DATABASE hueco CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+O desde phpMyAdmin de MAMP (`http://localhost/phpmyadmin`).
+
+### 5. Migrar la BD
+
+```bash
+php artisan migrate
+```
+
+### 6. Arrancar el proyecto
+
+En dos terminales separadas:
+
+**Terminal 1 (backend Laravel)**:
+```bash
+php artisan serve
+```
+→ App en http://localhost:8000
+
+**Terminal 2 (frontend Vite con hot-reload)**:
+```bash
+npm run dev
+```
+
+Abre http://localhost:8000 en el navegador. Regístrate y entra al dashboard.
+
+## Estructura del proyecto
+
+```
+hueco/
+├── app/
+│   ├── Http/Controllers/      # Controllers (backend → aquí trabaja Gerardo)
+│   └── Models/                # Modelos Eloquent
+├── database/
+│   ├── migrations/            # Esquema de BD versionado
+│   └── seeders/               # Datos de prueba
+├── resources/
+│   ├── js/
+│   │   ├── Pages/             # Componentes Inertia (frontend → aquí trabaja Alex)
+│   │   ├── Components/        # Componentes Vue reutilizables
+│   │   ├── Layouts/           # Layouts (AuthenticatedLayout, GuestLayout)
+│   │   └── app.js             # Punto de entrada Vue + Inertia
+│   └── css/
+│       └── app.css            # Tailwind + estilos globales
+└── routes/
+    └── web.php                # Definición de rutas
+```
+
+## Flujo de trabajo con Git
+
+1. **Rama por feature** (nunca commitear directo a `main`):
+   ```bash
+   git checkout -b feat/calendar-admin
+   ```
+2. Commits frecuentes con mensajes claros en imperativo:
+   - `add calendar component`, `fix booking conflict bug`, `update space model`
+3. Pull Request a `main` con revisión cruzada del otro dev.
+4. **Sync de migrations**: cuando hagas `git pull` y vengan migrations nuevas, ejecuta:
+   ```bash
+   php artisan migrate
+   ```
+
+## Comandos útiles
+
+| Comando | Qué hace |
+|---|---|
+| `php artisan serve` | Levanta el server PHP en :8000 |
+| `npm run dev` | Vite en modo dev (hot-reload de Vue) |
+| `npm run build` | Compila assets para producción |
+| `php artisan migrate` | Ejecuta migrations pendientes |
+| `php artisan migrate:fresh --seed` | Resetea BD y ejecuta seeders |
+| `php artisan tinker` | REPL interactivo de Laravel |
+| `php artisan route:list` | Lista todas las rutas |
+| `php artisan make:model Booking -mc` | Crea modelo + migration + controller |
+
+## Recursos
+
+- [Documentación Laravel](https://laravel.com/docs)
+- [Documentación Inertia](https://inertiajs.com)
+- [Documentación Vue 3](https://vuejs.org/guide/)
+- [Documentación Tailwind](https://tailwindcss.com/docs)
+- Página del proyecto en Notion (Wolfango → Aplicacion web reservas)
