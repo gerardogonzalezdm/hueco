@@ -33,8 +33,6 @@ const props = defineProps({
     },
 });
 
-// Convierte cualquier fecha (ISO o string MySQL) al formato YYYY-MM-DDTHH:MM
-// que espera el input datetime-local.
 const toDateTimeLocal = (value) => {
     if (!value) return '';
     const d = new Date(value);
@@ -50,6 +48,14 @@ const initialDuration = () => {
     return Math.round((end - start) / 60000);
 };
 
+const initialTimeEnd = () => {
+    if (props.booking?.time_end) return toDateTimeLocal(props.booking.time_end);
+    // Default: 1 hora después del time_start
+    const start = props.booking?.time_start ? new Date(props.booking.time_start) : new Date();
+    const end = new Date(start.getTime() + 60 * 60000);
+    return toDateTimeLocal(end);
+};
+
 const form = useForm({
     space_id: props.booking?.space_id ?? props.spaces[0]?.id ?? null,
     client_name: props.booking?.client_name ?? '',
@@ -58,13 +64,18 @@ const form = useForm({
     client_notes: props.booking?.client_notes ?? '',
     time_start: toDateTimeLocal(props.booking?.time_start) || toDateTimeLocal(new Date()),
     duration_minutes: initialDuration(),
+    time_end: initialTimeEnd(),
+    create_account: false,
+    account_password: '',
 });
 
 const selectedSpace = computed(() =>
     props.spaces.find((s) => s.id === form.space_id),
 );
 
-// Si el espacio tiene duración fija, autorrellenar duración al cambiar de espacio.
+const isFixedDuration = computed(() => selectedSpace.value?.fixed_duration ?? true);
+
+// Si el espacio tiene duración fija, autorrellenar duration_minutes al cambiar de espacio
 watch(
     () => form.space_id,
     () => {
@@ -75,11 +86,41 @@ watch(
     },
 );
 
+// Cuando cambia time_start, ajustar time_end manteniendo la duración (modo flex)
+watch(
+    () => form.time_start,
+    (newStart, oldStart) => {
+        if (!isFixedDuration.value && newStart && oldStart) {
+            const oldStartDate = new Date(oldStart);
+            const oldEndDate = new Date(form.time_end);
+            if (!Number.isNaN(oldStartDate.getTime()) && !Number.isNaN(oldEndDate.getTime())) {
+                const duration = oldEndDate - oldStartDate;
+                const newEnd = new Date(new Date(newStart).getTime() + duration);
+                form.time_end = toDateTimeLocal(newEnd);
+            }
+        }
+    },
+);
+
 const submit = () => {
+    // Enviar solo los campos relevantes según el modo del espacio
+    const transform = (data) => {
+        const payload = { ...data };
+        if (isFixedDuration.value) {
+            payload.time_end = null;
+        } else {
+            payload.duration_minutes = null;
+        }
+        if (!payload.create_account) {
+            payload.account_password = '';
+        }
+        return payload;
+    };
+
     if (props.method === 'put') {
-        form.put(props.submitUrl);
+        form.transform(transform).put(props.submitUrl);
     } else {
-        form.post(props.submitUrl);
+        form.transform(transform).post(props.submitUrl);
     }
 };
 </script>
@@ -95,13 +136,14 @@ const submit = () => {
                 required
             >
                 <option v-for="space in spaces" :key="space.id" :value="space.id">
-                    {{ space.name }}
+                    {{ space.name }} <span v-if="!space.fixed_duration">(duración libre)</span>
                 </option>
             </select>
             <InputError class="mt-2" :message="form.errors.space_id" />
         </div>
 
-        <div class="grid gap-6 sm:grid-cols-2">
+        <!-- Modo duración fija: time_start + duration_minutes -->
+        <div v-if="isFixedDuration" class="grid gap-6 sm:grid-cols-2">
             <div>
                 <InputLabel for="time_start" value="Inicio" />
                 <input
@@ -113,7 +155,6 @@ const submit = () => {
                 />
                 <InputError class="mt-2" :message="form.errors.time_start" />
             </div>
-
             <div>
                 <InputLabel for="duration_minutes" value="Duración (minutos)" />
                 <TextInput
@@ -127,12 +168,41 @@ const submit = () => {
                     required
                 />
                 <p
-                    v-if="selectedSpace?.fixed_duration"
+                    v-if="selectedSpace?.duration_minutes"
                     class="mt-1 text-xs text-gray-500"
                 >
                     Duración por defecto del espacio: {{ selectedSpace.duration_minutes }} min.
                 </p>
                 <InputError class="mt-2" :message="form.errors.duration_minutes" />
+            </div>
+        </div>
+
+        <!-- Modo flex: time_start + time_end (selector de horario libre) -->
+        <div v-else class="grid gap-6 sm:grid-cols-2">
+            <div>
+                <InputLabel for="time_start" value="Inicio" />
+                <input
+                    id="time_start"
+                    v-model="form.time_start"
+                    type="datetime-local"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
+                    required
+                />
+                <InputError class="mt-2" :message="form.errors.time_start" />
+            </div>
+            <div>
+                <InputLabel for="time_end" value="Fin" />
+                <input
+                    id="time_end"
+                    v-model="form.time_end"
+                    type="datetime-local"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
+                    required
+                />
+                <p class="mt-1 text-xs text-gray-500">
+                    Espacio con duración libre — elige inicio y fin a tu medida.
+                </p>
+                <InputError class="mt-2" :message="form.errors.time_end" />
             </div>
         </div>
 
@@ -142,32 +212,33 @@ const submit = () => {
             </h4>
 
             <div class="space-y-4">
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <InputLabel for="client_name" value="Nombre" />
-                        <TextInput
-                            id="client_name"
-                            v-model="form.client_name"
-                            type="text"
-                            class="mt-1 block w-full"
-                            placeholder="Nombre del cliente"
-                            required
-                        />
-                        <InputError class="mt-2" :message="form.errors.client_name" />
-                    </div>
+                <div>
+                    <InputLabel for="client_email" value="Email del cliente" />
+                    <TextInput
+                        id="client_email"
+                        v-model="form.client_email"
+                        type="email"
+                        class="mt-1 block w-full"
+                        placeholder="cliente@email.com"
+                        required
+                    />
+                    <p class="mt-1 text-xs text-gray-500">
+                        Si ya existe un cliente registrado con este email, la reserva se le asocia automáticamente.
+                    </p>
+                    <InputError class="mt-2" :message="form.errors.client_email" />
+                </div>
 
-                    <div>
-                        <InputLabel for="client_email" value="Email" />
-                        <TextInput
-                            id="client_email"
-                            v-model="form.client_email"
-                            type="email"
-                            class="mt-1 block w-full"
-                            placeholder="cliente@email.com"
-                            required
-                        />
-                        <InputError class="mt-2" :message="form.errors.client_email" />
-                    </div>
+                <div>
+                    <InputLabel for="client_name" value="Nombre del cliente" />
+                    <TextInput
+                        id="client_name"
+                        v-model="form.client_name"
+                        type="text"
+                        class="mt-1 block w-full"
+                        placeholder="Nombre y apellidos"
+                        required
+                    />
+                    <InputError class="mt-2" :message="form.errors.client_name" />
                 </div>
 
                 <div>
@@ -187,11 +258,47 @@ const submit = () => {
                     <textarea
                         id="client_notes"
                         v-model="form.client_notes"
-                        rows="3"
+                        rows="2"
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
                         placeholder="Necesidades especiales, equipo extra, etc."
                     ></textarea>
                     <InputError class="mt-2" :message="form.errors.client_notes" />
+                </div>
+
+                <!-- Crear cuenta de cliente al vuelo (solo en creación, no edición) -->
+                <div v-if="method === 'post'" class="rounded-xl bg-hueco-cream/60 p-4">
+                    <label class="flex cursor-pointer items-start gap-3">
+                        <input
+                            v-model="form.create_account"
+                            type="checkbox"
+                            class="mt-1 h-5 w-5 rounded border-gray-300 text-hueco-teal focus:ring-hueco-teal"
+                        />
+                        <div>
+                            <div class="text-sm font-semibold text-hueco-black">
+                                Crear cuenta para este cliente
+                            </div>
+                            <div class="text-xs text-gray-600">
+                                Útil para clientes que vienen presencialmente y aún no tienen cuenta.
+                                Podrá entrar luego con su email y la contraseña que pongas aquí.
+                            </div>
+                        </div>
+                    </label>
+
+                    <div v-if="form.create_account" class="mt-4">
+                        <InputLabel for="account_password" value="Contraseña inicial" />
+                        <TextInput
+                            id="account_password"
+                            v-model="form.account_password"
+                            type="text"
+                            class="mt-1 block w-full"
+                            placeholder="Mínimo 8 caracteres"
+                            required
+                        />
+                        <p class="mt-1 text-xs text-gray-500">
+                            La mantenemos visible para que la copies y se la pases al cliente. Podrá cambiarla luego.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.account_password" />
+                    </div>
                 </div>
             </div>
         </div>

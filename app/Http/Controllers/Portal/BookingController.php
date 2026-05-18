@@ -49,6 +49,10 @@ class BookingController extends Controller
         $user = $request->user();
         $start = Carbon::parse($data['time_start']);
 
+        $end = ! empty($data['time_end'])
+            ? Carbon::parse($data['time_end'])
+            : $start->copy()->addMinutes((int) $data['duration_minutes']);
+
         $booking = Booking::create([
             'company_id' => $user->company_id,
             'space_id' => $data['space_id'],
@@ -58,7 +62,7 @@ class BookingController extends Controller
             'client_phone' => $data['client_phone'] ?? null,
             'client_notes' => $data['client_notes'] ?? null,
             'time_start' => $start,
-            'time_end' => $start->copy()->addMinutes((int) $data['duration_minutes']),
+            'time_end' => $end,
             'status' => 'confirmed',
         ]);
 

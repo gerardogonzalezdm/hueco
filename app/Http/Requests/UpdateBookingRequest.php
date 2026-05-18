@@ -30,7 +30,8 @@ class UpdateBookingRequest extends FormRequest
             'client_phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'client_notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'time_start' => ['sometimes', 'required', 'date'],
-            'duration_minutes' => ['sometimes', 'required', 'integer', 'min:5', 'max:1440'],
+            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:1440'],
+            'time_end' => ['sometimes', 'nullable', 'date'],
             'status' => ['sometimes', 'required', Rule::in(['pending', 'confirmed', 'cancelled'])],
         ];
     }
@@ -42,18 +43,33 @@ class UpdateBookingRequest extends FormRequest
                 return;
             }
 
-            if (! $this->has('time_start') && ! $this->has('duration_minutes') && ! $this->has('space_id')) {
+            if (! $this->has('time_start') && ! $this->has('duration_minutes') && ! $this->has('time_end') && ! $this->has('space_id')) {
                 return;
             }
 
             $booking = $this->route('booking');
             $spaceId = $this->input('space_id', $booking->space_id);
+
             $start = $this->has('time_start')
                 ? Carbon::parse($this->input('time_start'))
                 : $booking->time_start;
-            $end = $this->has('duration_minutes')
-                ? $start->copy()->addMinutes((int) $this->input('duration_minutes'))
-                : $booking->time_end;
+
+            if ($this->filled('time_end')) {
+                $end = Carbon::parse($this->input('time_end'));
+            } elseif ($this->filled('duration_minutes')) {
+                $end = $start->copy()->addMinutes((int) $this->input('duration_minutes'));
+            } else {
+                $end = $booking->time_end;
+            }
+
+            if ($end <= $start) {
+                $validator->errors()->add(
+                    'time_end',
+                    'La hora de fin debe ser posterior a la de inicio.'
+                );
+
+                return;
+            }
 
             $hasConflict = Booking::query()
                 ->withoutGlobalScopes()
