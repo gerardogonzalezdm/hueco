@@ -4,18 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreBookingRequest;
 use App\Http\Requests\UpdateBookingRequest;
+use App\Mail\BookingCancelledMail;
+use App\Mail\BookingConfirmedMail;
 use App\Models\Booking;
 use App\Models\Space;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class BookingController extends Controller
 {
-    /**
-     * Listado de reservas de la empresa (scoped by trait).
-     */
     public function index(): Response
     {
         return Inertia::render('Bookings/Index', [
@@ -38,7 +38,7 @@ class BookingController extends Controller
         $data = $request->validated();
         $start = Carbon::parse($data['time_start']);
 
-        Booking::create([
+        $booking = Booking::create([
             'space_id' => $data['space_id'],
             'user_id' => $request->user()->id,
             'client_name' => $data['client_name'],
@@ -50,9 +50,12 @@ class BookingController extends Controller
             'status' => 'confirmed',
         ]);
 
+        Mail::to($booking->client_email)
+            ->send(new BookingConfirmedMail($booking->load('space', 'company')));
+
         return redirect()
             ->route('bookings.index')
-            ->with('success', 'Reserva creada correctamente.');
+            ->with('success', 'Reserva creada correctamente. Confirmación enviada al cliente.');
     }
 
     public function edit(Booking $booking): Response
@@ -66,16 +69,23 @@ class BookingController extends Controller
     public function update(UpdateBookingRequest $request, Booking $booking): RedirectResponse
     {
         $data = $request->validated();
+        $wasCancelled = $booking->status === 'cancelled';
 
         if (isset($data['time_start']) || isset($data['duration_minutes'])) {
             $start = Carbon::parse($data['time_start'] ?? $booking->time_start);
-            $duration = (int) ($data['duration_minutes'] ?? $booking->time_start->diffInMinutes($booking->time_end));
+            $duration = (int) ($data['duration_minutes']
+                ?? $booking->time_start->diffInMinutes($booking->time_end));
             $data['time_start'] = $start;
             $data['time_end'] = $start->copy()->addMinutes($duration);
             unset($data['duration_minutes']);
         }
 
         $booking->update($data);
+
+        if (! $wasCancelled && $booking->status === 'cancelled') {
+            Mail::to($booking->client_email)
+                ->send(new BookingCancelledMail($booking->load('space', 'company')));
+        }
 
         return redirect()
             ->route('bookings.index')
@@ -84,6 +94,11 @@ class BookingController extends Controller
 
     public function destroy(Booking $booking): RedirectResponse
     {
+        if ($booking->status !== 'cancelled') {
+            Mail::to($booking->client_email)
+                ->send(new BookingCancelledMail($booking->load('space', 'company')));
+        }
+
         $booking->delete();
 
         return redirect()
