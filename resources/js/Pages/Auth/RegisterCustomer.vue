@@ -5,9 +5,21 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
+
+const props = defineProps({
+    companies: Array,
+    preselected_slug: String,
+});
+
+const preselectedCompanyId = computed(() => {
+    if (!props.preselected_slug) return null;
+    const match = props.companies.find((c) => c.slug === props.preselected_slug);
+    return match?.id ?? null;
+});
 
 const form = useForm({
-    company_name: '',
+    company_id: preselectedCompanyId.value ?? props.companies[0]?.id ?? null,
     name: '',
     email: '',
     password: '',
@@ -15,7 +27,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('register'), {
+    form.post(route('customer.register.store'), {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
@@ -23,105 +35,91 @@ const submit = () => {
 
 <template>
     <GuestLayout>
-        <Head title="Register" />
+        <Head title="Crear cuenta de cliente" />
 
-        <form @submit.prevent="submit">
+        <h2 class="mb-6 text-lg font-bold text-hueco-black">Crear cuenta de cliente</h2>
+
+        <form @submit.prevent="submit" class="space-y-4">
             <div>
-                <InputLabel for="company_name" value="Nombre de tu empresa" />
-
-                <TextInput
-                    id="company_name"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.company_name"
+                <InputLabel for="company_id" value="¿En qué empresa quieres reservar?" />
+                <select
+                    id="company_id"
+                    v-model="form.company_id"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
                     required
-                    autofocus
-                    autocomplete="organization"
-                />
-
-                <InputError class="mt-2" :message="form.errors.company_name" />
+                >
+                    <option v-for="c in companies" :key="c.id" :value="c.id">
+                        {{ c.name }}
+                    </option>
+                </select>
+                <InputError class="mt-2" :message="form.errors.company_id" />
             </div>
 
-            <div class="mt-4">
+            <div>
                 <InputLabel for="name" value="Tu nombre" />
-
                 <TextInput
                     id="name"
+                    v-model="form.name"
                     type="text"
                     class="mt-1 block w-full"
-                    v-model="form.name"
                     required
+                    autofocus
                     autocomplete="name"
                 />
-
                 <InputError class="mt-2" :message="form.errors.name" />
             </div>
 
-            <div class="mt-4">
+            <div>
                 <InputLabel for="email" value="Email" />
-
                 <TextInput
                     id="email"
+                    v-model="form.email"
                     type="email"
                     class="mt-1 block w-full"
-                    v-model="form.email"
                     required
                     autocomplete="username"
                 />
-
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-
+            <div>
+                <InputLabel for="password" value="Contraseña" />
                 <TextInput
                     id="password"
+                    v-model="form.password"
                     type="password"
                     class="mt-1 block w-full"
-                    v-model="form.password"
                     required
                     autocomplete="new-password"
                 />
-
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel
-                    for="password_confirmation"
-                    value="Confirm Password"
-                />
-
+            <div>
+                <InputLabel for="password_confirmation" value="Confirma la contraseña" />
                 <TextInput
                     id="password_confirmation"
+                    v-model="form.password_confirmation"
                     type="password"
                     class="mt-1 block w-full"
-                    v-model="form.password_confirmation"
                     required
                     autocomplete="new-password"
                 />
-
-                <InputError
-                    class="mt-2"
-                    :message="form.errors.password_confirmation"
-                />
+                <InputError class="mt-2" :message="form.errors.password_confirmation" />
             </div>
 
-            <div class="mt-4 flex items-center justify-end">
+            <div class="flex items-center justify-between pt-2">
                 <Link
                     :href="route('login')"
-                    class="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:text-gray-400 dark:hover:text-gray-100 dark:focus:ring-offset-gray-800"
+                    class="text-sm font-semibold text-hueco-teal hover:underline"
                 >
-                    Already registered?
+                    Ya tengo cuenta
                 </Link>
-
                 <PrimaryButton
-                    class="ms-4"
-                    :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
+                    :class="{ 'opacity-25': form.processing }"
                 >
-                    Register
+                    Crear cuenta
                 </PrimaryButton>
             </div>
         </form>

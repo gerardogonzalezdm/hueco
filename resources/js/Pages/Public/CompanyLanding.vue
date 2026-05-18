@@ -76,13 +76,13 @@ const formatDuration = (minutes) => {
                 </div>
                 <div class="mt-8 flex flex-wrap gap-3">
                     <Link
-                        :href="route('public.login', company.slug)"
+                        :href="route('login')"
                         class="rounded-full bg-hueco-yellow px-6 py-3 text-base font-bold text-hueco-black shadow-sm transition hover:bg-yellow-300"
                     >
                         Iniciar sesión
                     </Link>
                     <Link
-                        :href="route('public.register', company.slug)"
+                        :href="route('customer.register', { company: company.slug })"
                         class="rounded-full border-2 border-hueco-black bg-transparent px-6 py-3 text-base font-bold text-hueco-black transition hover:bg-hueco-black hover:text-white"
                     >
                         Crear cuenta

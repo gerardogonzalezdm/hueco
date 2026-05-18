@@ -48,4 +48,12 @@ class UserFactory extends Factory
             'role' => 'customer',
         ]);
     }
+
+    public function superadmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'superadmin',
+            'company_id' => null,
+        ]);
+    }
 }

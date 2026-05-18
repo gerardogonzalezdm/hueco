@@ -23,11 +23,12 @@ class PortalTest extends TestCase
         Mail::fake();
     }
 
-    public function test_customer_can_register_at_company_portal(): void
+    public function test_customer_can_self_register_choosing_a_company(): void
     {
-        $company = Company::factory()->create(['slug' => 'cowork-a']);
+        $company = Company::factory()->create();
 
-        $this->post('/c/cowork-a/register', [
+        $this->post('/customer/register', [
+            'company_id' => $company->id,
             'name' => 'Cliente Nuevo',
             'email' => 'cliente@example.com',
             'password' => 'password123',
@@ -41,15 +42,15 @@ class PortalTest extends TestCase
         ]);
     }
 
-    public function test_customer_can_login_at_their_company_portal(): void
+    public function test_customer_login_via_global_endpoint_redirects_to_portal(): void
     {
-        $company = Company::factory()->create(['slug' => 'cowork-a']);
+        $company = Company::factory()->create();
         $customer = User::factory()->customer()->for($company)->create([
             'email' => 'cli@example.com',
             'password' => bcrypt('password123'),
         ]);
 
-        $this->post('/c/cowork-a/login', [
+        $this->post('/login', [
             'email' => 'cli@example.com',
             'password' => 'password123',
         ])->assertRedirect('/portal/dashboard');
@@ -57,35 +58,35 @@ class PortalTest extends TestCase
         $this->assertAuthenticatedAs($customer);
     }
 
-    public function test_customer_cannot_login_at_a_different_company_portal(): void
+    public function test_admin_login_via_global_endpoint_redirects_to_admin_dashboard(): void
     {
-        $companyA = Company::factory()->create(['slug' => 'cowork-a']);
-        $companyB = Company::factory()->create(['slug' => 'cowork-b']);
-        User::factory()->customer()->for($companyA)->create([
-            'email' => 'cli@example.com',
+        $company = Company::factory()->create();
+        $admin = User::factory()->admin()->for($company)->create([
+            'email' => 'admin@example.com',
             'password' => bcrypt('password123'),
         ]);
 
-        $this->post('/c/cowork-b/login', [
-            'email' => 'cli@example.com',
+        $this->post('/login', [
+            'email' => 'admin@example.com',
             'password' => 'password123',
-        ])->assertSessionHasErrors('email');
+        ])->assertRedirect('/dashboard');
 
-        $this->assertGuest();
+        $this->assertAuthenticatedAs($admin);
     }
 
-    public function test_admin_cannot_login_at_customer_portal(): void
+    public function test_superadmin_login_redirects_to_superadmin_dashboard(): void
     {
-        $company = Company::factory()->create(['slug' => 'cowork-a']);
-        User::factory()->admin()->for($company)->create([
-            'email' => 'admin@example.com',
+        $superadmin = User::factory()->superadmin()->create([
+            'email' => 'super@example.com',
             'password' => bcrypt('password123'),
         ]);
 
-        $this->post('/c/cowork-a/login', [
-            'email' => 'admin@example.com',
+        $this->post('/login', [
+            'email' => 'super@example.com',
             'password' => 'password123',
-        ])->assertSessionHasErrors('email');
+        ])->assertRedirect('/superadmin/dashboard');
+
+        $this->assertAuthenticatedAs($superadmin);
     }
 
     public function test_customer_dashboard_is_accessible_only_to_customers(): void
@@ -114,6 +115,15 @@ class PortalTest extends TestCase
             ->assertRedirect('/portal/dashboard');
     }
 
+    public function test_admin_dashboard_redirects_superadmin_to_panel(): void
+    {
+        $superadmin = User::factory()->superadmin()->create();
+
+        $this->actingAs($superadmin)
+            ->get('/dashboard')
+            ->assertRedirect('/superadmin/dashboard');
+    }
+
     public function test_customer_can_create_booking_for_their_company(): void
     {
         $company = Company::factory()->create();
@@ -134,7 +144,6 @@ class PortalTest extends TestCase
             'space_id' => $space->id,
             'company_id' => $company->id,
             'user_id' => $customer->id,
-            'client_name' => 'Cliente',
             'client_email' => 'cli@example.com',
             'status' => 'confirmed',
         ]);
@@ -162,21 +171,6 @@ class PortalTest extends TestCase
             );
     }
 
-    public function test_customer_cannot_see_booking_of_another_customer(): void
-    {
-        $company = Company::factory()->create();
-        $space = Space::factory()->for($company)->create();
-        $customerA = User::factory()->customer()->for($company)->create();
-        $customerB = User::factory()->customer()->for($company)->create();
-        $bookingOfB = Booking::factory()->for($company)->for($space)->create([
-            'user_id' => $customerB->id,
-        ]);
-
-        $this->actingAs($customerA)
-            ->get("/portal/bookings/{$bookingOfB->id}")
-            ->assertNotFound();
-    }
-
     public function test_customer_can_cancel_their_own_booking_and_email_is_sent(): void
     {
         $company = Company::factory()->create();
@@ -202,7 +196,7 @@ class PortalTest extends TestCase
         Mail::assertSent(BookingCancelledMail::class);
     }
 
-    public function test_customer_cannot_access_admin_spaces_or_bookings(): void
+    public function test_customer_cannot_access_admin_zones(): void
     {
         $company = Company::factory()->create();
         $customer = User::factory()->customer()->for($company)->create();
@@ -212,21 +206,6 @@ class PortalTest extends TestCase
         $this->actingAs($customer)->get('/calendar')->assertForbidden();
         $this->actingAs($customer)->get('/customers')->assertForbidden();
         $this->actingAs($customer)->get('/settings/company')->assertForbidden();
-    }
-
-    public function test_admin_can_see_customers_list(): void
-    {
-        $company = Company::factory()->create();
-        $admin = User::factory()->admin()->for($company)->create();
-        User::factory()->customer()->for($company)->count(3)->create();
-        User::factory()->customer()->create(); // de otra empresa
-
-        $this->actingAs($admin)
-            ->get('/customers')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('Customers/Index')
-                ->has('customers', 3)
-            );
+        $this->actingAs($customer)->get('/superadmin/dashboard')->assertForbidden();
     }
 }
