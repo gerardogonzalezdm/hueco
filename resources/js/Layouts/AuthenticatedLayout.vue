@@ -1,13 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
+const isAdmin = computed(() => usePage().props.auth?.user?.role === 'admin');
 </script>
 
 <template>
@@ -99,6 +100,7 @@ const showingNavigationDropdown = ref(false);
                                             Mi perfil
                                         </DropdownLink>
                                         <DropdownLink
+                                            v-if="isAdmin"
                                             :href="route('settings.company.edit')"
                                         >
                                             Ajustes de empresa
@@ -212,7 +214,10 @@ const showingNavigationDropdown = ref(false);
                             <ResponsiveNavLink :href="route('profile.edit')">
                                 Mi perfil
                             </ResponsiveNavLink>
-                            <ResponsiveNavLink :href="route('settings.company.edit')">
+                            <ResponsiveNavLink
+                                v-if="isAdmin"
+                                :href="route('settings.company.edit')"
+                            >
                                 Ajustes de empresa
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
