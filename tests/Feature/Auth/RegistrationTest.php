@@ -19,6 +19,7 @@ class RegistrationTest extends TestCase
     public function test_new_users_can_register(): void
     {
         $response = $this->post('/register', [
+            'company_name' => 'Test Cowork',
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
@@ -27,5 +28,11 @@ class RegistrationTest extends TestCase
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
+
+        $this->assertDatabaseHas('companies', ['name' => 'Test Cowork']);
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'role' => 'admin',
+        ]);
     }
 }

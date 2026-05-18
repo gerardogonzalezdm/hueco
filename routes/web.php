@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpaceController;
 use Illuminate\Foundation\Application;
@@ -25,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('spaces', SpaceController::class)->except('show');
+    Route::resource('bookings', BookingController::class)->except('show');
 });
 
 require __DIR__.'/auth.php';
