@@ -2,11 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Mail\BookingCancelledMail;
+use App\Mail\BookingConfirmedMail;
 use App\Models\Booking;
 use App\Models\Company;
 use App\Models\Space;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class BookingControllerTest extends TestCase
@@ -17,6 +20,7 @@ class BookingControllerTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        Mail::fake();
     }
 
     public function test_admin_can_create_a_booking(): void
@@ -157,5 +161,78 @@ class BookingControllerTest extends TestCase
                 ->component('Bookings/Index')
                 ->has('bookings', 2)
             );
+    }
+
+    public function test_creating_a_booking_sends_confirmation_email_to_client(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'María',
+                'client_email' => 'maria@example.com',
+                'time_start' => '2026-06-01 10:00:00',
+                'duration_minutes' => 60,
+            ])
+            ->assertRedirect('/bookings');
+
+        Mail::assertSent(BookingConfirmedMail::class, fn ($mail) => $mail->hasTo('maria@example.com'));
+    }
+
+    public function test_cancelling_a_booking_via_update_sends_cancellation_email(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $booking = Booking::factory()->for($company)->for($space)->create([
+            'client_email' => 'cancel@example.com',
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($admin)
+            ->put("/bookings/{$booking->id}", ['status' => 'cancelled'])
+            ->assertRedirect('/bookings');
+
+        Mail::assertSent(BookingCancelledMail::class, fn ($mail) => $mail->hasTo('cancel@example.com'));
+    }
+
+    public function test_deleting_a_non_cancelled_booking_sends_cancellation_email(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $booking = Booking::factory()->for($company)->for($space)->create([
+            'client_email' => 'gone@example.com',
+            'status' => 'confirmed',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete("/bookings/{$booking->id}")
+            ->assertRedirect('/bookings');
+
+        Mail::assertSent(BookingCancelledMail::class, fn ($mail) => $mail->hasTo('gone@example.com'));
+        $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
+    }
+
+    public function test_deleting_already_cancelled_booking_does_not_send_email(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $booking = Booking::factory()->for($company)->for($space)->create([
+            'status' => 'cancelled',
+        ]);
+
+        $this->actingAs($admin)
+            ->delete("/bookings/{$booking->id}")
+            ->assertRedirect('/bookings');
+
+        Mail::assertNothingSent();
     }
 }
