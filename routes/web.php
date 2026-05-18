@@ -30,17 +30,31 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::resource('spaces', SpaceController::class)->except('show');
+    // Espacios: index visible para todos los miembros, gestión solo admins
+    Route::get('/spaces', [SpaceController::class, 'index'])->name('spaces.index');
+    Route::middleware('admin')->group(function () {
+        Route::get('/spaces/create', [SpaceController::class, 'create'])->name('spaces.create');
+        Route::post('/spaces', [SpaceController::class, 'store'])->name('spaces.store');
+        Route::get('/spaces/{space}/edit', [SpaceController::class, 'edit'])->name('spaces.edit');
+        Route::put('/spaces/{space}', [SpaceController::class, 'update'])->name('spaces.update');
+        Route::delete('/spaces/{space}', [SpaceController::class, 'destroy'])->name('spaces.destroy');
+    });
+
+    // Reservas: todos los miembros pueden gestionar
     Route::resource('bookings', BookingController::class)->except('show');
 
+    // Calendario: todos lo ven, el reschedule (drag-drop) ya valida admin en UpdateBookingRequest
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::patch('/calendar/bookings/{booking}', [CalendarController::class, 'reschedule'])
         ->name('calendar.reschedule');
 
-    Route::get('/settings/company', [CompanySettingsController::class, 'edit'])
-        ->name('settings.company.edit');
-    Route::patch('/settings/company', [CompanySettingsController::class, 'update'])
-        ->name('settings.company.update');
+    // Ajustes empresa: solo admin
+    Route::middleware('admin')->group(function () {
+        Route::get('/settings/company', [CompanySettingsController::class, 'edit'])
+            ->name('settings.company.edit');
+        Route::patch('/settings/company', [CompanySettingsController::class, 'update'])
+            ->name('settings.company.update');
+    });
 });
 
 // Portal público de cada empresa cliente
