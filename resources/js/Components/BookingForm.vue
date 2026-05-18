@@ -15,6 +15,10 @@ const props = defineProps({
         type: Array,
         required: true,
     },
+    prefill: {
+        type: Object,
+        default: () => ({}),
+    },
     submitUrl: {
         type: String,
         required: true,
@@ -42,27 +46,55 @@ const toDateTimeLocal = (value) => {
 };
 
 const initialDuration = () => {
-    if (!props.booking?.time_start || !props.booking?.time_end) return 60;
-    const start = new Date(props.booking.time_start);
-    const end = new Date(props.booking.time_end);
-    return Math.round((end - start) / 60000);
+    if (props.booking?.time_start && props.booking?.time_end) {
+        const start = new Date(props.booking.time_start);
+        const end = new Date(props.booking.time_end);
+        return Math.round((end - start) / 60000);
+    }
+    // Si tenemos prefill con time_start y time_end, calcular la duración
+    if (props.prefill?.time_start && props.prefill?.time_end) {
+        const start = new Date(props.prefill.time_start);
+        const end = new Date(props.prefill.time_end);
+        return Math.round((end - start) / 60000);
+    }
+    return 60;
+};
+
+const initialTimeStart = () => {
+    if (props.booking?.time_start) return toDateTimeLocal(props.booking.time_start);
+    if (props.prefill?.time_start) {
+        // El prefill viene en formato 'YYYY-MM-DDTHH:MM' — lo usamos tal cual
+        return props.prefill.time_start;
+    }
+    return toDateTimeLocal(new Date());
 };
 
 const initialTimeEnd = () => {
     if (props.booking?.time_end) return toDateTimeLocal(props.booking.time_end);
+    if (props.prefill?.time_end) return props.prefill.time_end;
     // Default: 1 hora después del time_start
-    const start = props.booking?.time_start ? new Date(props.booking.time_start) : new Date();
+    const baseStart = props.booking?.time_start ?? props.prefill?.time_start ?? new Date();
+    const start = new Date(baseStart);
     const end = new Date(start.getTime() + 60 * 60000);
     return toDateTimeLocal(end);
 };
 
+const initialSpaceId = () => {
+    if (props.booking?.space_id) return props.booking.space_id;
+    if (props.prefill?.space_id) {
+        const match = props.spaces.find((s) => s.id === Number(props.prefill.space_id));
+        if (match) return match.id;
+    }
+    return props.spaces[0]?.id ?? null;
+};
+
 const form = useForm({
-    space_id: props.booking?.space_id ?? props.spaces[0]?.id ?? null,
+    space_id: initialSpaceId(),
     client_name: props.booking?.client_name ?? '',
     client_email: props.booking?.client_email ?? '',
     client_phone: props.booking?.client_phone ?? '',
     client_notes: props.booking?.client_notes ?? '',
-    time_start: toDateTimeLocal(props.booking?.time_start) || toDateTimeLocal(new Date()),
+    time_start: initialTimeStart(),
     duration_minutes: initialDuration(),
     time_end: initialTimeEnd(),
     create_account: false,
@@ -72,6 +104,17 @@ const form = useForm({
 const selectedSpace = computed(() =>
     props.spaces.find((s) => s.id === form.space_id),
 );
+
+// Si en la inicialización el espacio es fixed_duration y no estamos editando ni el prefill
+// trae time_end, usar la duración por defecto del espacio.
+if (
+    !props.booking?.time_start
+    && !props.prefill?.time_end
+    && selectedSpace.value?.fixed_duration
+    && selectedSpace.value?.duration_minutes
+) {
+    form.duration_minutes = selectedSpace.value.duration_minutes;
+}
 
 const isFixedDuration = computed(() => selectedSpace.value?.fixed_duration ?? true);
 

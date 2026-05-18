@@ -66,12 +66,20 @@ const handleEventClick = (event) => {
     router.visit(route('bookings.edit', event.bookingId));
 };
 
-const handleCellClick = (date) => {
-    // Click en celda vacía → ir al formulario de nueva reserva con la fecha pre-rellenada
+const handleCellClick = (payload) => {
+    // vue-cal emite { date, split } cuando hay split-days, o solo date sin split.
+    const date = payload?.date ?? payload;
+    const spaceId = payload?.split ?? null;
+
     const pad = (n) => String(n).padStart(2, '0');
     const d = new Date(date);
     const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    router.visit(route('bookings.create') + `?time_start=${iso}`);
+
+    const params = new URLSearchParams();
+    params.set('time_start', iso);
+    if (spaceId) params.set('space_id', String(spaceId));
+
+    router.visit(route('bookings.create') + '?' + params.toString());
 };
 </script>
 
