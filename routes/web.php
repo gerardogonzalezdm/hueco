@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\CompanySettingsController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Public\CompanyController as PublicCompanyController;
@@ -35,6 +36,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
     Route::patch('/calendar/bookings/{booking}', [CalendarController::class, 'reschedule'])
         ->name('calendar.reschedule');
+
+    Route::get('/settings/company', [CompanySettingsController::class, 'edit'])
+        ->name('settings.company.edit');
+    Route::patch('/settings/company', [CompanySettingsController::class, 'update'])
+        ->name('settings.company.update');
 });
 
 // Portal público de cada empresa cliente

@@ -19,6 +19,9 @@ class CompanyController extends Controller
             'company' => [
                 'name' => $company->name,
                 'slug' => $company->slug,
+                'contact_email' => $company->contact_email,
+                'contact_phone' => $company->contact_phone,
+                'description' => $company->description,
             ],
             'spaces' => Space::query()
                 ->withoutGlobalScopes()

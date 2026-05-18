@@ -48,10 +48,32 @@ const formatDuration = (minutes) => {
                 <h1 class="mt-6 text-4xl font-extrabold tracking-tight text-hueco-black sm:text-5xl">
                     Reserva en <span class="text-hueco-teal">{{ company.name }}</span>
                 </h1>
-                <p class="mt-4 max-w-2xl text-lg text-gray-700">
+                <p
+                    v-if="company.description"
+                    class="mt-4 max-w-2xl whitespace-pre-line text-lg text-gray-700"
+                >
+                    {{ company.description }}
+                </p>
+                <p v-else class="mt-4 max-w-2xl text-lg text-gray-700">
                     Elige tu espacio, fecha y hora. Te enviamos un email con la confirmación
                     y un link para gestionar tu reserva.
                 </p>
+                <div class="mt-6 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                    <a
+                        v-if="company.contact_email"
+                        :href="`mailto:${company.contact_email}`"
+                        class="hover:text-hueco-black"
+                    >
+                        ✉ {{ company.contact_email }}
+                    </a>
+                    <a
+                        v-if="company.contact_phone"
+                        :href="`tel:${company.contact_phone}`"
+                        class="hover:text-hueco-black"
+                    >
+                        ☎ {{ company.contact_phone }}
+                    </a>
+                </div>
                 <Link
                     :href="route('public.bookings.create', company.slug)"
                     class="mt-8 inline-block rounded-full bg-hueco-yellow px-6 py-3 text-base font-bold text-hueco-black shadow-sm transition hover:bg-yellow-300"
