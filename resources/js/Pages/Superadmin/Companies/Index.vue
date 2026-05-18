@@ -18,6 +18,16 @@ const confirmDelete = (company) => {
     }
 };
 
+const accessAsAdmin = (company) => {
+    if (
+        confirm(
+            `Vas a acceder al panel de "${company.name}" como su administrador. Podrás volver al panel super-admin desde el banner superior.`,
+        )
+    ) {
+        router.post(route('superadmin.companies.access', company.id));
+    }
+};
+
 const formatDate = (iso) =>
     new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
 </script>
@@ -82,6 +92,20 @@ const formatDate = (iso) =>
                                 <td class="px-6 py-4 text-center text-sm">{{ c.bookings_count }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ formatDate(c.created_at) }}</td>
                                 <td class="px-6 py-4 text-right">
+                                    <button
+                                        type="button"
+                                        @click="accessAsAdmin(c)"
+                                        :disabled="c.users_count === 0"
+                                        :class="[
+                                            'px-3 py-1 text-sm font-semibold',
+                                            c.users_count > 0
+                                                ? 'text-hueco-black hover:underline'
+                                                : 'cursor-not-allowed text-gray-400',
+                                        ]"
+                                        :title="c.users_count === 0 ? 'Esta empresa no tiene admin' : 'Acceder como administrador'"
+                                    >
+                                        Acceder
+                                    </button>
                                     <Link
                                         :href="route('superadmin.companies.edit', c.id)"
                                         class="px-3 py-1 text-sm font-semibold text-hueco-teal hover:underline"

@@ -72,11 +72,19 @@ Route::prefix('superadmin')->name('superadmin.')->middleware(['auth', 'superadmi
     Route::patch('/companies/{company}', [SuperadminCompanyController::class, 'update'])->name('companies.update');
     Route::delete('/companies/{company}', [SuperadminCompanyController::class, 'destroy'])->name('companies.destroy');
 
+    // Acceder como admin de una empresa (impersonate)
+    Route::post('/companies/{company}/access', [SuperadminCompanyController::class, 'access'])->name('companies.access');
+
     Route::get('/admins', [SuperadminAdminController::class, 'index'])->name('admins.index');
     Route::get('/admins/create', [SuperadminAdminController::class, 'create'])->name('admins.create');
     Route::post('/admins', [SuperadminAdminController::class, 'store'])->name('admins.store');
     Route::delete('/admins/{admin}', [SuperadminAdminController::class, 'destroy'])->name('admins.destroy');
 });
+
+// Volver al super-admin original tras impersonar (auth pero NO superadmin, porque ya estás logueado como otro)
+Route::post('/superadmin/stop-impersonating', [SuperadminCompanyController::class, 'stopImpersonating'])
+    ->middleware('auth')
+    ->name('superadmin.stop-impersonating');
 
 // Portal del cliente (zona autenticada)
 Route::prefix('portal')->name('portal.')->middleware(['auth', 'customer'])->group(function () {

@@ -5,15 +5,40 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 
 const showingNavigationDropdown = ref(false);
 const isAdmin = computed(() => usePage().props.auth?.user?.role === 'admin');
+const impersonating = computed(() => usePage().props.impersonating === true);
+const companyName = computed(() => usePage().props.auth?.user?.company?.name);
+
+const stopImpersonating = () => {
+    router.post(route('superadmin.stop-impersonating'));
+};
 </script>
 
 <template>
     <div>
         <div class="min-h-screen bg-hueco-cream/40 dark:bg-gray-900">
+            <!-- Banner de impersonación: visible cuando el super-admin está viendo el panel como admin -->
+            <div
+                v-if="impersonating"
+                class="flex items-center justify-between gap-4 bg-hueco-black px-6 py-3 text-sm text-white"
+            >
+                <div>
+                    👁️ Estás viendo el panel de
+                    <span class="font-bold text-hueco-yellow">{{ companyName }}</span>
+                    como super-admin de Hueco.
+                </div>
+                <button
+                    type="button"
+                    @click="stopImpersonating"
+                    class="rounded-full bg-hueco-yellow px-4 py-1.5 text-xs font-bold text-hueco-black hover:bg-yellow-300"
+                >
+                    Volver al panel super-admin
+                </button>
+            </div>
+
             <nav
                 class="border-b border-hueco-cream bg-white dark:border-gray-700 dark:bg-gray-800"
             >
