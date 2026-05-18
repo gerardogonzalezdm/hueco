@@ -74,12 +74,20 @@ const formatDuration = (minutes) => {
                         ☎ {{ company.contact_phone }}
                     </a>
                 </div>
-                <Link
-                    :href="route('public.bookings.create', company.slug)"
-                    class="mt-8 inline-block rounded-full bg-hueco-yellow px-6 py-3 text-base font-bold text-hueco-black shadow-sm transition hover:bg-yellow-300"
-                >
-                    Reservar ahora
-                </Link>
+                <div class="mt-8 flex flex-wrap gap-3">
+                    <Link
+                        :href="route('public.login', company.slug)"
+                        class="rounded-full bg-hueco-yellow px-6 py-3 text-base font-bold text-hueco-black shadow-sm transition hover:bg-yellow-300"
+                    >
+                        Iniciar sesión
+                    </Link>
+                    <Link
+                        :href="route('public.register', company.slug)"
+                        class="rounded-full border-2 border-hueco-black bg-transparent px-6 py-3 text-base font-bold text-hueco-black transition hover:bg-hueco-black hover:text-white"
+                    >
+                        Crear cuenta
+                    </Link>
+                </div>
             </section>
 
             <section v-if="spaces.length > 0" class="mt-12">

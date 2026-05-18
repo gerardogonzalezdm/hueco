@@ -20,7 +20,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'time_end',
     'status',
     'google_event_id',
-    'manage_token',
 ])]
 class Booking extends Model
 {

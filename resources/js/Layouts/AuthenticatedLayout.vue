@@ -62,6 +62,13 @@ const isAdmin = computed(() => usePage().props.auth?.user?.role === 'admin');
                                 >
                                     Reservas
                                 </NavLink>
+                                <NavLink
+                                    v-if="isAdmin"
+                                    :href="route('customers.index')"
+                                    :active="route().current('customers.*')"
+                                >
+                                    Clientes
+                                </NavLink>
                             </div>
                         </div>
 
@@ -192,6 +199,13 @@ const isAdmin = computed(() => usePage().props.auth?.user?.role === 'admin');
                             :active="route().current('bookings.*')"
                         >
                             Reservas
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            v-if="isAdmin"
+                            :href="route('customers.index')"
+                            :active="route().current('customers.*')"
+                        >
+                            Clientes
                         </ResponsiveNavLink>
                     </div>
 

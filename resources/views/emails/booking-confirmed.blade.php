@@ -20,8 +20,8 @@ Tu reserva ha sido **confirmada**. Te resumimos los detalles:
 {{ $booking->client_notes }}
 @endif
 
-@if($booking->manage_token)
-<x-mail::button :url="route('public.bookings.show', $booking->manage_token)" color="primary">
+@if($booking->user_id && $company)
+<x-mail::button :url="route('portal.bookings.show', $booking->id)" color="primary">
 Ver o cancelar mi reserva
 </x-mail::button>
 @else
