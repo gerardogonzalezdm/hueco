@@ -4,7 +4,6 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
 
 const props = defineProps({
     space: {
@@ -46,9 +45,6 @@ const submit = () => {
     }
 };
 
-const durationLabel = computed(() =>
-    form.fixed_duration ? 'Duración fija (minutos)' : 'Duración orientativa (minutos)',
-);
 </script>
 
 <template>
@@ -67,9 +63,9 @@ const durationLabel = computed(() =>
             <InputError class="mt-2" :message="form.errors.name" />
         </div>
 
-        <div class="grid gap-6 sm:grid-cols-2">
-            <div>
-                <InputLabel for="duration_minutes" :value="durationLabel" />
+        <div :class="form.fixed_duration ? 'grid gap-6 sm:grid-cols-2' : ''">
+            <div v-if="form.fixed_duration">
+                <InputLabel for="duration_minutes" value="Duración fija (minutos)" />
                 <TextInput
                     id="duration_minutes"
                     v-model.number="form.duration_minutes"
@@ -114,6 +110,7 @@ const durationLabel = computed(() =>
                     <div class="text-sm font-semibold text-hueco-black">Duración fija</div>
                     <div class="text-xs text-gray-600">
                         Si está activado, las reservas duran exactamente lo indicado arriba.
+                        Si lo desactivas, las reservas se hacen seleccionando inicio y fin a medida (por ejemplo, arrastrando en el calendario).
                     </div>
                 </div>
             </label>

@@ -16,7 +16,7 @@ class StoreSpaceRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
+            'duration_minutes' => ['nullable', 'required_if:fixed_duration,1', 'integer', 'min:5', 'max:1440'],
             'fixed_duration' => ['boolean'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'show_price' => ['boolean'],

@@ -21,10 +21,17 @@ const defaultStart = () => {
     return toDateTimeLocal(now);
 };
 
+const defaultEnd = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 2, 0, 0, 0);
+    return toDateTimeLocal(now);
+};
+
 const form = useForm({
     space_id: props.spaces[0]?.id ?? null,
     time_start: defaultStart(),
     duration_minutes: props.spaces[0]?.duration_minutes ?? 60,
+    time_end: defaultEnd(),
     client_phone: '',
     client_notes: '',
 });
@@ -32,6 +39,8 @@ const form = useForm({
 const selectedSpace = computed(() =>
     props.spaces.find((s) => s.id === form.space_id),
 );
+
+const isFixedDuration = computed(() => selectedSpace.value?.fixed_duration ?? true);
 
 watch(
     () => form.space_id,
@@ -43,8 +52,34 @@ watch(
     },
 );
 
+// En modo flex, al cambiar time_start, mover time_end manteniendo la duración previa
+watch(
+    () => form.time_start,
+    (newStart, oldStart) => {
+        if (!isFixedDuration.value && newStart && oldStart) {
+            const oldStartDate = new Date(oldStart);
+            const oldEndDate = new Date(form.time_end);
+            if (!Number.isNaN(oldStartDate.getTime()) && !Number.isNaN(oldEndDate.getTime())) {
+                const duration = oldEndDate - oldStartDate;
+                const newEnd = new Date(new Date(newStart).getTime() + duration);
+                form.time_end = toDateTimeLocal(newEnd);
+            }
+        }
+    },
+);
+
 const submit = () => {
-    form.post(route('portal.bookings.store'));
+    const transform = (data) => {
+        const payload = { ...data };
+        if (isFixedDuration.value) {
+            payload.time_end = null;
+        } else {
+            payload.duration_minutes = null;
+        }
+        return payload;
+    };
+
+    form.transform(transform).post(route('portal.bookings.store'));
 };
 </script>
 
@@ -79,13 +114,14 @@ const submit = () => {
                                 required
                             >
                                 <option v-for="space in spaces" :key="space.id" :value="space.id">
-                                    {{ space.name }}
+                                    {{ space.name }} <span v-if="!space.fixed_duration">(duración libre)</span>
                                 </option>
                             </select>
                             <InputError class="mt-2" :message="form.errors.space_id" />
                         </div>
 
-                        <div class="grid gap-6 sm:grid-cols-2">
+                        <!-- Modo duración fija -->
+                        <div v-if="isFixedDuration" class="grid gap-6 sm:grid-cols-2">
                             <div>
                                 <InputLabel for="time_start" value="Cuándo" />
                                 <input
@@ -97,7 +133,6 @@ const submit = () => {
                                 />
                                 <InputError class="mt-2" :message="form.errors.time_start" />
                             </div>
-
                             <div>
                                 <InputLabel for="duration_minutes" value="Duración (minutos)" />
                                 <TextInput
@@ -111,12 +146,41 @@ const submit = () => {
                                     required
                                 />
                                 <p
-                                    v-if="selectedSpace?.fixed_duration"
+                                    v-if="selectedSpace?.duration_minutes"
                                     class="mt-1 text-xs text-gray-500"
                                 >
                                     Duración del espacio: {{ selectedSpace.duration_minutes }} min.
                                 </p>
                                 <InputError class="mt-2" :message="form.errors.duration_minutes" />
+                            </div>
+                        </div>
+
+                        <!-- Modo flex -->
+                        <div v-else class="grid gap-6 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="time_start" value="Desde" />
+                                <input
+                                    id="time_start"
+                                    v-model="form.time_start"
+                                    type="datetime-local"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
+                                    required
+                                />
+                                <InputError class="mt-2" :message="form.errors.time_start" />
+                            </div>
+                            <div>
+                                <InputLabel for="time_end" value="Hasta" />
+                                <input
+                                    id="time_end"
+                                    v-model="form.time_end"
+                                    type="datetime-local"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
+                                    required
+                                />
+                                <p class="mt-1 text-xs text-gray-500">
+                                    Este espacio acepta cualquier rango horario.
+                                </p>
+                                <InputError class="mt-2" :message="form.errors.time_end" />
                             </div>
                         </div>
 

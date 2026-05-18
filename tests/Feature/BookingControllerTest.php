@@ -23,7 +23,7 @@ class BookingControllerTest extends TestCase
         Mail::fake();
     }
 
-    public function test_admin_can_create_a_booking(): void
+    public function test_admin_can_create_a_booking_for_walk_in_client_without_account(): void
     {
         $company = Company::factory()->create();
         $space = Space::factory()->for($company)->create();
@@ -39,13 +39,97 @@ class BookingControllerTest extends TestCase
             ])
             ->assertRedirect('/bookings');
 
+        // Sin marcar 'create_account': la reserva queda con user_id null
         $this->assertDatabaseHas('bookings', [
             'space_id' => $space->id,
             'company_id' => $company->id,
-            'user_id' => $admin->id,
+            'user_id' => null,
             'client_name' => 'Pepe Perez',
             'time_end' => '2026-06-01 11:00:00',
             'status' => 'confirmed',
+        ]);
+    }
+
+    public function test_admin_creating_booking_associates_existing_customer_by_email(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+        $existingCustomer = User::factory()->customer()->for($company)->create([
+            'email' => 'cli@example.com',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'Cualquier nombre',
+                'client_email' => 'cli@example.com',
+                'time_start' => '2026-06-01 10:00:00',
+                'duration_minutes' => 60,
+            ])
+            ->assertRedirect('/bookings');
+
+        $this->assertDatabaseHas('bookings', [
+            'space_id' => $space->id,
+            'user_id' => $existingCustomer->id,
+            'client_email' => 'cli@example.com',
+        ]);
+    }
+
+    public function test_admin_can_create_customer_on_the_fly_when_booking(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'Nuevo Cliente',
+                'client_email' => 'nuevo@example.com',
+                'client_phone' => '+34 600 000',
+                'time_start' => '2026-06-02 09:00:00',
+                'duration_minutes' => 60,
+                'create_account' => true,
+                'account_password' => 'password123',
+            ])
+            ->assertRedirect('/bookings');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'nuevo@example.com',
+            'role' => 'customer',
+            'company_id' => $company->id,
+        ]);
+
+        $newCustomer = \App\Models\User::query()->withoutGlobalScopes()
+            ->where('email', 'nuevo@example.com')->first();
+
+        $this->assertDatabaseHas('bookings', [
+            'space_id' => $space->id,
+            'user_id' => $newCustomer->id,
+        ]);
+    }
+
+    public function test_admin_can_create_flex_booking_with_time_end_directly(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create(['fixed_duration' => false]);
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'Cliente Flex',
+                'client_email' => 'flex@example.com',
+                'time_start' => '2026-06-03 14:30:00',
+                'time_end' => '2026-06-03 17:15:00',
+            ])
+            ->assertRedirect('/bookings');
+
+        $this->assertDatabaseHas('bookings', [
+            'space_id' => $space->id,
+            'time_start' => '2026-06-03 14:30:00',
+            'time_end' => '2026-06-03 17:15:00',
         ]);
     }
 

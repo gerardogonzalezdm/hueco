@@ -25,7 +25,9 @@ class StorePortalBookingRequest extends FormRequest
                 Rule::exists('spaces', 'id')->where('company_id', $companyId),
             ],
             'time_start' => ['required', 'date', 'after:now'],
-            'duration_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
+            // Espacios con duración fija → duration_minutes. Flex → time_end.
+            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
+            'time_end' => ['nullable', 'date', 'after:time_start'],
             'client_phone' => ['nullable', 'string', 'max:50'],
             'client_notes' => ['nullable', 'string', 'max:1000'],
         ];
@@ -38,8 +40,19 @@ class StorePortalBookingRequest extends FormRequest
                 return;
             }
 
+            if (! $this->filled('time_end') && ! $this->filled('duration_minutes')) {
+                $validator->errors()->add(
+                    'duration_minutes',
+                    'Indica la duración o la hora de fin.'
+                );
+
+                return;
+            }
+
             $start = Carbon::parse($this->input('time_start'));
-            $end = $start->copy()->addMinutes((int) $this->input('duration_minutes'));
+            $end = $this->filled('time_end')
+                ? Carbon::parse($this->input('time_end'))
+                : $start->copy()->addMinutes((int) $this->input('duration_minutes'));
 
             $hasConflict = Booking::query()
                 ->withoutGlobalScopes()

@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Booking;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -29,7 +30,13 @@ class StoreBookingRequest extends FormRequest
             'client_phone' => ['nullable', 'string', 'max:50'],
             'client_notes' => ['nullable', 'string', 'max:1000'],
             'time_start' => ['required', 'date'],
-            'duration_minutes' => ['required', 'integer', 'min:5', 'max:1440'],
+            // Para espacios con duración fija: enviar duration_minutes.
+            // Para espacios flex: enviar time_end directamente.
+            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
+            'time_end' => ['nullable', 'date', 'after:time_start'],
+            // Crear cuenta de cliente al vuelo (admin presencial)
+            'create_account' => ['nullable', 'boolean'],
+            'account_password' => ['nullable', 'required_if:create_account,true', 'string', 'min:8'],
         ];
     }
 
@@ -40,9 +47,38 @@ class StoreBookingRequest extends FormRequest
                 return;
             }
 
-            $start = Carbon::parse($this->input('time_start'));
-            $end = $start->copy()->addMinutes((int) $this->input('duration_minutes'));
+            // Validar que llegue duration_minutes O time_end
+            if (! $this->filled('time_end') && ! $this->filled('duration_minutes')) {
+                $validator->errors()->add(
+                    'duration_minutes',
+                    'Indica la duración de la reserva o la hora de fin.'
+                );
 
+                return;
+            }
+
+            $start = Carbon::parse($this->input('time_start'));
+            $end = $this->filled('time_end')
+                ? Carbon::parse($this->input('time_end'))
+                : $start->copy()->addMinutes((int) $this->input('duration_minutes'));
+
+            // Si quiere crear cuenta, el email no debe estar ya en uso
+            if ($this->boolean('create_account')) {
+                $existing = User::query()
+                    ->withoutGlobalScopes()
+                    ->where('email', $this->input('client_email'))
+                    ->exists();
+                if ($existing) {
+                    $validator->errors()->add(
+                        'client_email',
+                        'Este email ya está registrado. Desmarca "Crear cuenta" para asociar la reserva al cliente existente.'
+                    );
+
+                    return;
+                }
+            }
+
+            // Detección de conflictos horarios
             $hasConflict = Booking::query()
                 ->withoutGlobalScopes()
                 ->where('space_id', $this->input('space_id'))
