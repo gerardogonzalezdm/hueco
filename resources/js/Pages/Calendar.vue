@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import VueCal from 'vue-cal';
 import 'vue-cal/dist/vuecal.css';
 
@@ -11,6 +11,35 @@ const props = defineProps({
 });
 
 const view = ref('day'); // 'day' | 'week' | 'month'
+
+// Selección de rango con 2 clicks (funciona en desktop y móvil)
+// pendingStart guarda el primer click: { date: Date, spaceId, label }
+const pendingStart = ref(null);
+
+const spaceName = (id) => props.spaces.find((s) => s.id === id)?.name ?? '';
+
+const formatHourLabel = (date) =>
+    new Date(date).toLocaleString('es-ES', {
+        weekday: 'short',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+
+const cancelRangeSelection = () => {
+    pendingStart.value = null;
+};
+
+// ESC cancela la selección
+const onKeydown = (e) => {
+    if (e.key === 'Escape' && pendingStart.value) {
+        cancelRangeSelection();
+    }
+};
+
+onMounted(() => window.addEventListener('keydown', onKeydown));
+onUnmounted(() => window.removeEventListener('keydown', onKeydown));
 
 // vue-cal "split days": columnas dentro del día. Una por espacio.
 const splits = computed(() =>
@@ -66,20 +95,66 @@ const handleEventClick = (event) => {
     router.visit(route('bookings.edit', event.bookingId));
 };
 
+const toQueryDateTime = (date) => {
+    const pad = (n) => String(n).padStart(2, '0');
+    const d = new Date(date);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+const goToCreateBooking = (start, end, spaceId) => {
+    const params = new URLSearchParams();
+    params.set('time_start', toQueryDateTime(start));
+    if (end) params.set('time_end', toQueryDateTime(end));
+    if (spaceId) params.set('space_id', String(spaceId));
+    router.visit(route('bookings.create') + '?' + params.toString());
+};
+
 const handleCellClick = (payload) => {
     // vue-cal emite { date, split } cuando hay split-days, o solo date sin split.
     const date = payload?.date ?? payload;
     const spaceId = payload?.split ?? null;
 
-    const pad = (n) => String(n).padStart(2, '0');
-    const d = new Date(date);
-    const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    // Si no estamos en vista día, comportamiento clásico (click puntual, 1h default)
+    if (view.value !== 'day') {
+        pendingStart.value = null;
+        goToCreateBooking(date, null, spaceId);
+        return;
+    }
 
-    const params = new URLSearchParams();
-    params.set('time_start', iso);
-    if (spaceId) params.set('space_id', String(spaceId));
+    // Primer click: guardar como inicio del rango
+    if (!pendingStart.value) {
+        pendingStart.value = {
+            date: new Date(date),
+            spaceId,
+            label: formatHourLabel(date),
+        };
+        return;
+    }
 
-    router.visit(route('bookings.create') + '?' + params.toString());
+    // Segundo click
+    // Si es un espacio distinto del primer click, descartar y arrancar nuevo
+    if (pendingStart.value.spaceId !== spaceId) {
+        pendingStart.value = {
+            date: new Date(date),
+            spaceId,
+            label: formatHourLabel(date),
+        };
+        return;
+    }
+
+    // Ordenar para que start <= end (por si el usuario clicó al revés)
+    const a = pendingStart.value.date;
+    const b = new Date(date);
+    let start = a <= b ? a : b;
+    let end = a <= b ? b : a;
+
+    // Si son la misma celda, defecto = 1 hora
+    if (start.getTime() === end.getTime()) {
+        end = new Date(start.getTime() + 60 * 60000);
+    }
+
+    pendingStart.value = null;
+    goToCreateBooking(start, end, spaceId);
 };
 </script>
 
@@ -103,6 +178,27 @@ const handleCellClick = (payload) => {
 
         <div class="py-6">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <!-- Banner de selección de rango (2 clicks) -->
+                <div
+                    v-if="pendingStart"
+                    class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-hueco-yellow px-5 py-3 text-sm font-semibold text-hueco-black shadow-sm"
+                >
+                    <div>
+                        🎯 Inicio: <span class="font-bold">{{ pendingStart.label }}</span>
+                        <span v-if="pendingStart.spaceId" class="ml-1 font-normal">
+                            en {{ spaceName(pendingStart.spaceId) }}
+                        </span>
+                        — toca o haz clic en la hora de fin del rango (misma columna).
+                    </div>
+                    <button
+                        type="button"
+                        @click="cancelRangeSelection"
+                        class="rounded-full bg-hueco-black px-4 py-1.5 text-xs font-bold text-white hover:bg-gray-800"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+
                 <div v-if="spaces.length === 0" class="rounded-2xl bg-white p-12 text-center shadow-sm">
                     <div class="text-5xl">📅</div>
                     <h3 class="mt-4 text-lg font-semibold text-hueco-black">
@@ -135,7 +231,7 @@ const handleCellClick = (payload) => {
                         @event-drop="handleEventDrop"
                         @cell-click="handleCellClick"
                         @view-change="(e) => (view = e.view)"
-                        class="hueco-calendar"
+                        :class="['hueco-calendar', { 'selecting-range': pendingStart }]"
                     />
                 </div>
             </div>
@@ -183,6 +279,14 @@ const handleCellClick = (payload) => {
 .hueco-calendar .vuecal__cell:hover {
     background-color: rgba(252, 239, 230, 0.6);
     cursor: pointer;
+}
+
+/* Modo selección de rango: cursor crosshair y fondo más cálido al hover */
+.hueco-calendar.selecting-range .vuecal__cell {
+    cursor: crosshair;
+}
+.hueco-calendar.selecting-range .vuecal__cell:hover {
+    background-color: rgba(255, 213, 0, 0.15);
 }
 
 .hueco-calendar .vuecal__event {
