@@ -37,7 +37,19 @@ const showingNavigationDropdown = ref(false);
                                     :href="route('dashboard')"
                                     :active="route().current('dashboard')"
                                 >
-                                    Dashboard
+                                    Inicio
+                                </NavLink>
+                                <NavLink
+                                    :href="route('spaces.index')"
+                                    :active="route().current('spaces.*')"
+                                >
+                                    Espacios
+                                </NavLink>
+                                <NavLink
+                                    :href="route('bookings.index')"
+                                    :active="route().current('bookings.*')"
+                                >
+                                    Reservas
                                 </NavLink>
                             </div>
                         </div>
@@ -144,7 +156,19 @@ const showingNavigationDropdown = ref(false);
                             :href="route('dashboard')"
                             :active="route().current('dashboard')"
                         >
-                            Dashboard
+                            Inicio
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('spaces.index')"
+                            :active="route().current('spaces.*')"
+                        >
+                            Espacios
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('bookings.index')"
+                            :active="route().current('bookings.*')"
+                        >
+                            Reservas
                         </ResponsiveNavLink>
                     </div>
 
