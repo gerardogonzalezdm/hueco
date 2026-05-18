@@ -125,4 +125,38 @@ class SuperadminTest extends TestCase
                 'password_confirmation' => 'password123',
             ])->assertForbidden();
     }
+
+    public function test_superadmin_can_impersonate_company_admin_and_return(): void
+    {
+        $superadmin = User::factory()->superadmin()->create();
+        $company = Company::factory()->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        // Accede como admin
+        $this->actingAs($superadmin)
+            ->post("/superadmin/companies/{$company->id}/access")
+            ->assertRedirect('/dashboard');
+
+        $this->assertAuthenticatedAs($admin);
+
+        // Vuelve al super-admin
+        $this->post('/superadmin/stop-impersonating')
+            ->assertRedirect('/superadmin/dashboard');
+
+        $this->assertAuthenticatedAs($superadmin);
+    }
+
+    public function test_impersonate_fails_when_company_has_no_admin(): void
+    {
+        $superadmin = User::factory()->superadmin()->create();
+        $company = Company::factory()->create();
+        // sin crear admin
+
+        $this->actingAs($superadmin)
+            ->post("/superadmin/companies/{$company->id}/access")
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertAuthenticatedAs($superadmin);
+    }
 }

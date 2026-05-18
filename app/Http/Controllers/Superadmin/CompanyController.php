@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -115,5 +116,59 @@ class CompanyController extends Controller
         return redirect()
             ->route('superadmin.companies.index')
             ->with('success', 'Empresa eliminada (junto con sus usuarios, espacios y reservas).');
+    }
+
+    /**
+     * Acceder al panel de admin de una empresa como super-admin.
+     * Guarda en sesión el ID del super-admin para poder volver después.
+     */
+    public function access(Request $request, Company $company): RedirectResponse
+    {
+        $admin = User::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('role', 'admin')
+            ->first();
+
+        if (! $admin) {
+            return back()->with('error', "La empresa \"{$company->name}\" no tiene un administrador asignado.");
+        }
+
+        // Guardar el ID del super-admin original para poder volver
+        $request->session()->put('impersonator_id', $request->user()->id);
+
+        Auth::login($admin);
+
+        return redirect()
+            ->route('dashboard')
+            ->with('success', "Has accedido al panel de \"{$company->name}\" como su administrador.");
+    }
+
+    /**
+     * Volver a la sesión del super-admin original.
+     */
+    public function stopImpersonating(Request $request): RedirectResponse
+    {
+        $originalId = $request->session()->get('impersonator_id');
+
+        if (! $originalId) {
+            return redirect()->route('dashboard');
+        }
+
+        $original = User::query()->withoutGlobalScopes()->find($originalId);
+
+        $request->session()->forget('impersonator_id');
+
+        if (! $original || ! $original->isSuperadmin()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('login');
+        }
+
+        Auth::login($original);
+
+        return redirect()->route('superadmin.dashboard');
     }
 }
