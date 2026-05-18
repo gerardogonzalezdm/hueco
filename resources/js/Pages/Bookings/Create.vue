@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import BookingForm from '@/Components/BookingForm.vue';
+import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
     spaces: Array,
@@ -10,6 +11,40 @@ defineProps({
 <template>
     <Head title="Nueva reserva" />
     <AuthenticatedLayout>
-        <div class="p-6">TODO: formulario de creación de reserva (Alex)</div>
+        <template #header>
+            <h2 class="text-xl font-semibold text-hueco-black dark:text-white">
+                Nueva reserva
+            </h2>
+        </template>
+
+        <div class="py-10">
+            <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+                <div v-if="spaces.length === 0" class="rounded-2xl bg-white p-12 text-center shadow-sm">
+                    <div class="text-5xl">⚠️</div>
+                    <h3 class="mt-4 text-lg font-semibold text-hueco-black">
+                        Necesitas crear un espacio primero
+                    </h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Antes de aceptar reservas, define al menos un espacio reservable.
+                    </p>
+                    <Link
+                        :href="route('spaces.create')"
+                        class="mt-6 inline-block rounded-full bg-hueco-yellow px-5 py-2 text-sm font-bold text-hueco-black shadow-sm transition hover:bg-yellow-300"
+                    >
+                        Crear primer espacio
+                    </Link>
+                </div>
+
+                <div v-else class="rounded-2xl bg-white p-8 shadow-sm dark:bg-gray-800">
+                    <BookingForm
+                        :spaces="spaces"
+                        :submit-url="route('bookings.store')"
+                        :cancel-url="route('bookings.index')"
+                        method="post"
+                        submit-label="Crear reserva"
+                    />
+                </div>
+            </div>
+        </div>
     </AuthenticatedLayout>
 </template>
