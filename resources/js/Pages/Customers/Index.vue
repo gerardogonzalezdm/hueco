@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 
 defineProps({
     customers: Array,
@@ -8,6 +8,12 @@ defineProps({
 
 const formatDate = (iso) =>
     new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+
+const confirmDelete = (customer) => {
+    if (confirm(`¿Eliminar al cliente "${customer.name}"? Sus reservas pasadas se mantienen.`)) {
+        router.delete(route('customers.destroy', customer.id), { preserveScroll: true });
+    }
+};
 </script>
 
 <template>
@@ -15,7 +21,15 @@ const formatDate = (iso) =>
 
     <AuthenticatedLayout>
         <template #header>
-            <h2 class="text-xl font-semibold text-hueco-black dark:text-white">Clientes</h2>
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-hueco-black dark:text-white">Clientes</h2>
+                <Link
+                    :href="route('customers.create')"
+                    class="rounded-full bg-hueco-yellow px-4 py-2 text-sm font-bold text-hueco-black shadow-sm transition hover:bg-yellow-300"
+                >
+                    + Nuevo cliente
+                </Link>
+            </div>
         </template>
 
         <div class="py-10">
@@ -49,6 +63,9 @@ const formatDate = (iso) =>
                                 <th class="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
                                     Alta
                                 </th>
+                                <th class="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-600">
+                                    Acciones
+                                </th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-hueco-cream dark:divide-gray-700">
@@ -77,6 +94,15 @@ const formatDate = (iso) =>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-500">
                                     {{ formatDate(c.created_at) }}
+                                </td>
+                                <td class="px-6 py-4 text-right">
+                                    <button
+                                        type="button"
+                                        @click="confirmDelete(c)"
+                                        class="rounded px-3 py-1 text-sm font-semibold text-red-600 hover:underline"
+                                    >
+                                        Eliminar
+                                    </button>
                                 </td>
                             </tr>
                         </tbody>

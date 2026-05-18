@@ -33,6 +33,16 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $user = Auth::user();
+
+        if ($user->isSuperadmin()) {
+            return redirect()->route('superadmin.dashboard');
+        }
+
+        if ($user->isCustomer()) {
+            return redirect()->route('portal.dashboard');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

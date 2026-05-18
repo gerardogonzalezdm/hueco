@@ -15,6 +15,10 @@ class DashboardController extends Controller
     {
         $user = $request->user();
 
+        if ($user->isSuperadmin()) {
+            return redirect()->route('superadmin.dashboard');
+        }
+
         if ($user->isCustomer()) {
             return redirect()->route('portal.dashboard');
         }
