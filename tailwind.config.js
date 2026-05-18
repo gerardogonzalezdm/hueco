@@ -15,6 +15,15 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                hueco: {
+                    yellow: '#FFD500',
+                    green: '#3DD183',
+                    cream: '#FCEFE6',
+                    black: '#0A0A0A',
+                    teal: '#00B8A5',
+                },
+            },
         },
     },
 
