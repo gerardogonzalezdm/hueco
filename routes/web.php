@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SpaceController;
@@ -28,6 +29,10 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('spaces', SpaceController::class)->except('show');
     Route::resource('bookings', BookingController::class)->except('show');
+
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::patch('/calendar/bookings/{booking}', [CalendarController::class, 'reschedule'])
+        ->name('calendar.reschedule');
 });
 
 require __DIR__.'/auth.php';
