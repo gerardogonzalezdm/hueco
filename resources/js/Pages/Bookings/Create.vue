@@ -9,6 +9,14 @@ defineProps({
 });
 
 const isAdmin = computed(() => usePage().props.auth?.user?.role === 'admin');
+
+// Leer query params para prefill desde el calendario (?time_start=...&space_id=...&time_end=...)
+const queryParams = new URLSearchParams(window.location.search);
+const prefill = {
+    time_start: queryParams.get('time_start'),
+    time_end: queryParams.get('time_end'),
+    space_id: queryParams.get('space_id') ? Number(queryParams.get('space_id')) : null,
+};
 </script>
 
 <template>
@@ -51,6 +59,7 @@ const isAdmin = computed(() => usePage().props.auth?.user?.role === 'admin');
                 <div v-else class="rounded-2xl bg-white p-8 shadow-sm dark:bg-gray-800">
                     <BookingForm
                         :spaces="spaces"
+                        :prefill="prefill"
                         :submit-url="route('bookings.store')"
                         :cancel-url="route('bookings.index')"
                         method="post"
