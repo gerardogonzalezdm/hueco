@@ -36,35 +36,35 @@ const formatDateTime = (iso) => {
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <Link
                         :href="route('spaces.index')"
-                        class="block rounded-lg bg-white p-6 shadow-sm hover:shadow-md dark:bg-gray-800"
+                        class="group block rounded-2xl border-l-4 border-hueco-teal bg-white p-6 shadow-sm transition hover:shadow-md dark:bg-gray-800"
                     >
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Espacios</div>
-                        <div class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">
+                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Espacios</div>
+                        <div class="mt-2 text-3xl font-bold text-hueco-black dark:text-white">
                             {{ stats.spaces }}
                         </div>
                     </Link>
 
                     <Link
                         :href="route('bookings.index')"
-                        class="block rounded-lg bg-white p-6 shadow-sm hover:shadow-md dark:bg-gray-800"
+                        class="group block rounded-2xl border-l-4 border-hueco-green bg-white p-6 shadow-sm transition hover:shadow-md dark:bg-gray-800"
                     >
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Reservas totales</div>
-                        <div class="mt-2 text-3xl font-bold text-gray-900 dark:text-gray-100">
+                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Reservas totales</div>
+                        <div class="mt-2 text-3xl font-bold text-hueco-black dark:text-white">
                             {{ stats.bookings_total }}
                         </div>
                     </Link>
 
-                    <div class="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-800">
-                        <div class="text-sm text-gray-500 dark:text-gray-400">Próximas</div>
-                        <div class="mt-2 text-3xl font-bold text-indigo-600 dark:text-indigo-400">
+                    <div class="rounded-2xl border-l-4 border-hueco-yellow bg-white p-6 shadow-sm dark:bg-gray-800">
+                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Próximas</div>
+                        <div class="mt-2 text-3xl font-bold text-hueco-black dark:text-white">
                             {{ stats.bookings_upcoming }}
                         </div>
                     </div>
                 </div>
 
-                <div class="rounded-lg bg-white shadow-sm dark:bg-gray-800">
-                    <div class="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-                        <h3 class="font-semibold text-gray-900 dark:text-gray-100">
+                <div class="rounded-2xl bg-white shadow-sm dark:bg-gray-800">
+                    <div class="border-b border-hueco-cream px-6 py-4 dark:border-gray-700">
+                        <h3 class="font-semibold text-hueco-black dark:text-white">
                             Próximas reservas
                         </h3>
                     </div>
@@ -76,19 +76,19 @@ const formatDateTime = (iso) => {
                             No hay reservas próximas.
                             <Link
                                 :href="route('bookings.create')"
-                                class="text-indigo-600 hover:underline"
+                                class="font-semibold text-hueco-teal hover:underline"
                             >
                                 Crear la primera
                             </Link>
                         </p>
-                        <ul v-else class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <ul v-else class="divide-y divide-hueco-cream dark:divide-gray-700">
                             <li
                                 v-for="b in upcoming"
                                 :key="b.id"
                                 class="flex justify-between py-3"
                             >
                                 <div>
-                                    <div class="font-medium text-gray-900 dark:text-gray-100">
+                                    <div class="font-medium text-hueco-black dark:text-gray-100">
                                         {{ b.client_name }}
                                     </div>
                                     <div class="text-sm text-gray-500 dark:text-gray-400">
@@ -97,7 +97,7 @@ const formatDateTime = (iso) => {
                                 </div>
                                 <Link
                                     :href="route('bookings.edit', b.id)"
-                                    class="text-sm text-indigo-600 hover:underline"
+                                    class="text-sm font-semibold text-hueco-teal hover:underline"
                                 >
                                     Editar
                                 </Link>
