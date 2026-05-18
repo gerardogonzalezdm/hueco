@@ -99,6 +99,11 @@ const showingNavigationDropdown = ref(false);
                                             Mi perfil
                                         </DropdownLink>
                                         <DropdownLink
+                                            :href="route('settings.company.edit')"
+                                        >
+                                            Ajustes de empresa
+                                        </DropdownLink>
+                                        <DropdownLink
                                             :href="route('logout')"
                                             method="post"
                                             as="button"
@@ -206,6 +211,9 @@ const showingNavigationDropdown = ref(false);
                         <div class="mt-3 space-y-1">
                             <ResponsiveNavLink :href="route('profile.edit')">
                                 Mi perfil
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('settings.company.edit')">
+                                Ajustes de empresa
                             </ResponsiveNavLink>
                             <ResponsiveNavLink
                                 :href="route('logout')"
