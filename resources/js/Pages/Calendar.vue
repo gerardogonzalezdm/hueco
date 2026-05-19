@@ -12,11 +12,27 @@ const props = defineProps({
 
 const view = ref('day'); // 'day' | 'week' | 'month'
 
-// Selección de rango con 2 clicks (funciona en desktop y móvil)
+// Selección de rango con 2 clicks SOLO para columnas de espacios flex.
 // pendingStart guarda el primer click: { date: Date, spaceId, label }
 const pendingStart = ref(null);
 
-const spaceName = (id) => props.spaces.find((s) => s.id === id)?.name ?? '';
+// Flag para ignorar cell-click espurios que vue-cal dispara al soltar un drag o resize de evento existente.
+const recentlyChangedEvent = ref(false);
+let recentlyChangedTimeout = null;
+const markRecentlyChangedEvent = () => {
+    recentlyChangedEvent.value = true;
+    if (recentlyChangedTimeout) clearTimeout(recentlyChangedTimeout);
+    recentlyChangedTimeout = setTimeout(() => {
+        recentlyChangedEvent.value = false;
+    }, 400);
+};
+
+const spaceById = (id) => props.spaces.find((s) => s.id === id);
+const spaceName = (id) => spaceById(id)?.name ?? '';
+const spaceIsFlex = (id) => {
+    const s = spaceById(id);
+    return s ? !s.fixed_duration : false;
+};
 
 const formatHourLabel = (date) =>
     new Date(date).toLocaleString('es-ES', {
@@ -63,12 +79,10 @@ const events = computed(() =>
     })),
 );
 
-const handleEventDrop = ({ event, originalEvent }) => {
+const persistEventChange = (event, originalEvent) => {
     const start = new Date(event.start);
     const end = new Date(event.end);
     const duration = Math.round((end - start) / 60000);
-
-    // Si vue-cal cambió la columna (split), interpretarlo como cambio de espacio.
     const newSpaceId = event.split ?? originalEvent.split;
 
     const pad = (n) => String(n).padStart(2, '0');
@@ -85,13 +99,25 @@ const handleEventDrop = ({ event, originalEvent }) => {
             preserveScroll: true,
             onError: (errors) => {
                 const firstError = Object.values(errors)[0];
-                alert(firstError || 'No se pudo mover la reserva.');
+                alert(firstError || 'No se pudo guardar el cambio.');
             },
         },
     );
 };
 
+const handleEventDrop = ({ event, originalEvent }) => {
+    markRecentlyChangedEvent();
+    persistEventChange(event, originalEvent);
+};
+
+const handleEventDurationChange = ({ event, originalEvent }) => {
+    markRecentlyChangedEvent();
+    persistEventChange(event, originalEvent);
+};
+
 const handleEventClick = (event) => {
+    // Cancelar cualquier pendingStart al hacer click en un evento existente
+    pendingStart.value = null;
     router.visit(route('bookings.edit', event.bookingId));
 };
 
@@ -110,18 +136,40 @@ const goToCreateBooking = (start, end, spaceId) => {
 };
 
 const handleCellClick = (payload) => {
+    // Ignorar el cell-click espurio que vue-cal dispara al soltar un drag/resize de evento existente.
+    if (recentlyChangedEvent.value) return;
+
     // vue-cal emite { date, split } cuando hay split-days, o solo date sin split.
     const date = payload?.date ?? payload;
     const spaceId = payload?.split ?? null;
 
-    // Si no estamos en vista día, comportamiento clásico (click puntual, 1h default)
+    // En vistas semana/mes (sin split-days), comportamiento clásico: 1 click directo al form.
     if (view.value !== 'day') {
         pendingStart.value = null;
         goToCreateBooking(date, null, spaceId);
         return;
     }
 
-    // Primer click: guardar como inicio del rango
+    // Vista día CON columnas por espacio. El comportamiento depende del espacio de la columna:
+    //   - Espacio con duración fija → 1 click → al form (con duración del espacio o default).
+    //   - Espacio flex (duración libre) → 2 clicks → rango.
+
+    // Si no sabemos el espacio (caso raro), ir al form sin rango.
+    if (!spaceId) {
+        pendingStart.value = null;
+        goToCreateBooking(date, null, null);
+        return;
+    }
+
+    // Columna de espacio con duración fija → directo al form, sin rango.
+    if (!spaceIsFlex(spaceId)) {
+        pendingStart.value = null;
+        goToCreateBooking(date, null, spaceId);
+        return;
+    }
+
+    // Columna de espacio flex → modo 2 clicks.
+    // Primer click: guardar como inicio del rango.
     if (!pendingStart.value) {
         pendingStart.value = {
             date: new Date(date),
@@ -131,9 +179,14 @@ const handleCellClick = (payload) => {
         return;
     }
 
-    // Segundo click
-    // Si es un espacio distinto del primer click, descartar y arrancar nuevo
+    // Segundo click. Si es otro espacio (incluso fijo), descartar y arrancar nuevo si es flex,
+    // o ir directo al form si el nuevo espacio es fijo.
     if (pendingStart.value.spaceId !== spaceId) {
+        if (!spaceIsFlex(spaceId)) {
+            pendingStart.value = null;
+            goToCreateBooking(date, null, spaceId);
+            return;
+        }
         pendingStart.value = {
             date: new Date(date),
             spaceId,
@@ -142,7 +195,7 @@ const handleCellClick = (payload) => {
         return;
     }
 
-    // Ordenar para que start <= end (por si el usuario clicó al revés)
+    // Mismo espacio flex: construir el rango.
     const a = pendingStart.value.date;
     const b = new Date(date);
     let start = a <= b ? a : b;
@@ -178,17 +231,15 @@ const handleCellClick = (payload) => {
 
         <div class="py-6">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <!-- Banner de selección de rango (2 clicks) -->
+                <!-- Banner de selección de rango (solo para espacios con duración libre, 2 clicks) -->
                 <div
                     v-if="pendingStart"
                     class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-hueco-yellow px-5 py-3 text-sm font-semibold text-hueco-black shadow-sm"
                 >
                     <div>
-                        🎯 Inicio: <span class="font-bold">{{ pendingStart.label }}</span>
-                        <span v-if="pendingStart.spaceId" class="ml-1 font-normal">
-                            en {{ spaceName(pendingStart.spaceId) }}
-                        </span>
-                        — toca o haz clic en la hora de fin del rango (misma columna).
+                        🎯 Inicio en <span class="font-bold">{{ spaceName(pendingStart.spaceId) }}</span>:
+                        <span class="font-bold">{{ pendingStart.label }}</span>
+                        — toca/clic ahora en la hora de fin del rango (misma columna).
                     </div>
                     <button
                         type="button"
@@ -229,6 +280,7 @@ const handleCellClick = (payload) => {
                         editable-events
                         :on-event-click="handleEventClick"
                         @event-drop="handleEventDrop"
+                        @event-duration-change="handleEventDurationChange"
                         @cell-click="handleCellClick"
                         @view-change="(e) => (view = e.view)"
                         :class="['hueco-calendar', { 'selecting-range': pendingStart }]"
