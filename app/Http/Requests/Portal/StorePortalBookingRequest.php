@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Portal;
 
 use App\Models\Booking;
+use App\Models\Space;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,8 +26,8 @@ class StorePortalBookingRequest extends FormRequest
                 Rule::exists('spaces', 'id')->where('company_id', $companyId),
             ],
             'time_start' => ['required', 'date', 'after:now'],
-            // Espacios con duración fija → duration_minutes. Flex → time_end.
-            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
+            // Espacios con duración fija → duration_minutes (mín. 30). Flex → time_end (mín. 60 min de rango).
+            'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:1440'],
             'time_end' => ['nullable', 'date', 'after:time_start'],
             'client_phone' => ['nullable', 'string', 'max:50'],
             'client_notes' => ['nullable', 'string', 'max:1000'],
@@ -53,6 +54,20 @@ class StorePortalBookingRequest extends FormRequest
             $end = $this->filled('time_end')
                 ? Carbon::parse($this->input('time_end'))
                 : $start->copy()->addMinutes((int) $this->input('duration_minutes'));
+
+            // Mínimo 1 hora en reservas sobre espacios con duración flex.
+            $space = Space::query()
+                ->withoutGlobalScopes()
+                ->find($this->input('space_id'));
+
+            if ($space && ! $space->fixed_duration && $start->diffInMinutes($end) < 60) {
+                $validator->errors()->add(
+                    'time_end',
+                    'En espacios con duración libre la reserva debe durar al menos 1 hora.'
+                );
+
+                return;
+            }
 
             $hasConflict = Booking::query()
                 ->withoutGlobalScopes()

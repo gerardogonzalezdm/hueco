@@ -319,4 +319,65 @@ class BookingControllerTest extends TestCase
 
         Mail::assertNothingSent();
     }
+
+    public function test_flex_booking_below_one_hour_is_rejected(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create(['fixed_duration' => false]);
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'Corto',
+                'client_email' => 'corto@example.com',
+                'time_start' => '2026-06-10 10:00:00',
+                'time_end' => '2026-06-10 10:30:00', // solo 30 min en flex
+            ])
+            ->assertSessionHasErrors('time_end');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
+
+    public function test_flex_booking_exactly_one_hour_is_accepted(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create(['fixed_duration' => false]);
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'Justo 1h',
+                'client_email' => 'justo@example.com',
+                'time_start' => '2026-06-10 10:00:00',
+                'time_end' => '2026-06-10 11:00:00',
+            ])
+            ->assertRedirect('/bookings');
+
+        $this->assertDatabaseHas('bookings', [
+            'space_id' => $space->id,
+            'time_start' => '2026-06-10 10:00:00',
+            'time_end' => '2026-06-10 11:00:00',
+        ]);
+    }
+
+    public function test_booking_duration_below_30_min_is_rejected(): void
+    {
+        $company = Company::factory()->create();
+        $space = Space::factory()->for($company)->create();
+        $admin = User::factory()->admin()->for($company)->create();
+
+        $this->actingAs($admin)
+            ->post('/bookings', [
+                'space_id' => $space->id,
+                'client_name' => 'Mini',
+                'client_email' => 'mini@example.com',
+                'time_start' => '2026-06-10 10:00:00',
+                'duration_minutes' => 15, // < 30
+            ])
+            ->assertSessionHasErrors('duration_minutes');
+
+        $this->assertDatabaseCount('bookings', 0);
+    }
 }

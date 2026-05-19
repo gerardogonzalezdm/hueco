@@ -193,6 +193,7 @@ const submit = () => {
                     id="time_start"
                     v-model="form.time_start"
                     type="datetime-local"
+                    step="1800"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
                     required
                 />
@@ -204,9 +205,9 @@ const submit = () => {
                     id="duration_minutes"
                     v-model.number="form.duration_minutes"
                     type="number"
-                    min="5"
+                    min="30"
                     max="1440"
-                    step="5"
+                    step="30"
                     class="mt-1 block w-full"
                     required
                 />
@@ -220,7 +221,7 @@ const submit = () => {
             </div>
         </div>
 
-        <!-- Modo flex: time_start + time_end (selector de horario libre) -->
+        <!-- Modo flex: time_start + time_end (selector de horario libre, mínimo 1 h) -->
         <div v-else class="grid gap-6 sm:grid-cols-2">
             <div>
                 <InputLabel for="time_start" value="Inicio" />
@@ -228,6 +229,7 @@ const submit = () => {
                     id="time_start"
                     v-model="form.time_start"
                     type="datetime-local"
+                    step="1800"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
                     required
                 />
@@ -239,11 +241,12 @@ const submit = () => {
                     id="time_end"
                     v-model="form.time_end"
                     type="datetime-local"
+                    step="1800"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-hueco-teal focus:ring-hueco-teal"
                     required
                 />
                 <p class="mt-1 text-xs text-gray-500">
-                    Espacio con duración libre — elige inicio y fin a tu medida.
+                    Espacio con duración libre — bloques de 30 minutos. Duración mínima: <strong>1 hora</strong>.
                 </p>
                 <InputError class="mt-2" :message="form.errors.time_end" />
             </div>

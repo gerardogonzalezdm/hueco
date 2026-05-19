@@ -70,13 +70,13 @@ const submit = () => {
                     id="duration_minutes"
                     v-model.number="form.duration_minutes"
                     type="number"
-                    min="5"
+                    min="30"
                     max="1440"
-                    step="5"
+                    step="30"
                     class="mt-1 block w-full"
                 />
                 <p class="mt-1 text-xs text-gray-500">
-                    Entre 5 y 1440 minutos (24 h).
+                    Entre 30 y 1440 minutos (24 h), en bloques de 30.
                 </p>
                 <InputError class="mt-2" :message="form.errors.duration_minutes" />
             </div>
