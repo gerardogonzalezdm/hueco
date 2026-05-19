@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Booking;
+use App\Models\Space;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
@@ -30,9 +31,9 @@ class StoreBookingRequest extends FormRequest
             'client_phone' => ['nullable', 'string', 'max:50'],
             'client_notes' => ['nullable', 'string', 'max:1000'],
             'time_start' => ['required', 'date'],
-            // Para espacios con duración fija: enviar duration_minutes.
-            // Para espacios flex: enviar time_end directamente.
-            'duration_minutes' => ['nullable', 'integer', 'min:5', 'max:1440'],
+            // Para espacios con duración fija: enviar duration_minutes (mínimo 30).
+            // Para espacios flex: enviar time_end directamente (mínimo 60 min de rango).
+            'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:1440'],
             'time_end' => ['nullable', 'date', 'after:time_start'],
             // Crear cuenta de cliente al vuelo (admin presencial)
             'create_account' => ['nullable', 'boolean'],
@@ -47,7 +48,6 @@ class StoreBookingRequest extends FormRequest
                 return;
             }
 
-            // Validar que llegue duration_minutes O time_end
             if (! $this->filled('time_end') && ! $this->filled('duration_minutes')) {
                 $validator->errors()->add(
                     'duration_minutes',
@@ -61,6 +61,22 @@ class StoreBookingRequest extends FormRequest
             $end = $this->filled('time_end')
                 ? Carbon::parse($this->input('time_end'))
                 : $start->copy()->addMinutes((int) $this->input('duration_minutes'));
+
+            // Mínimo 1 hora en reservas sobre espacios con duración flex.
+            $space = Space::query()
+                ->withoutGlobalScopes()
+                ->find($this->input('space_id'));
+
+            if ($space && ! $space->fixed_duration) {
+                if ($start->diffInMinutes($end) < 60) {
+                    $validator->errors()->add(
+                        'time_end',
+                        'En espacios con duración libre la reserva debe durar al menos 1 hora.'
+                    );
+
+                    return;
+                }
+            }
 
             // Si quiere crear cuenta, el email no debe estar ya en uso
             if ($this->boolean('create_account')) {

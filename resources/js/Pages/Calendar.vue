@@ -276,7 +276,7 @@ const handleCellClick = (payload) => {
                         small
                         sticky-split-labels
                         hide-weekends
-                        :snap-to-time="15"
+                        :snap-to-time="30"
                         editable-events
                         :on-event-click="handleEventClick"
                         @event-drop="handleEventDrop"

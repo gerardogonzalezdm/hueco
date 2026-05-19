@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Booking;
+use App\Models\Space;
 use Carbon\Carbon;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,7 +31,7 @@ class UpdateBookingRequest extends FormRequest
             'client_phone' => ['sometimes', 'nullable', 'string', 'max:50'],
             'client_notes' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'time_start' => ['sometimes', 'required', 'date'],
-            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:5', 'max:1440'],
+            'duration_minutes' => ['sometimes', 'nullable', 'integer', 'min:30', 'max:1440'],
             'time_end' => ['sometimes', 'nullable', 'date'],
             'status' => ['sometimes', 'required', Rule::in(['pending', 'confirmed', 'cancelled'])],
         ];
@@ -66,6 +67,20 @@ class UpdateBookingRequest extends FormRequest
                 $validator->errors()->add(
                     'time_end',
                     'La hora de fin debe ser posterior a la de inicio.'
+                );
+
+                return;
+            }
+
+            // Mínimo 1 hora en reservas sobre espacios con duración flex.
+            $space = Space::query()
+                ->withoutGlobalScopes()
+                ->find($spaceId);
+
+            if ($space && ! $space->fixed_duration && $start->diffInMinutes($end) < 60) {
+                $validator->errors()->add(
+                    'time_end',
+                    'En espacios con duración libre la reserva debe durar al menos 1 hora.'
                 );
 
                 return;
